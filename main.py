@@ -127,6 +127,8 @@ async def process_session(phone):
     if not config:
         return
 
+    print(config)
+
     api_id = config.get('app_id')
     api_hash = config.get('app_hash')
     session_file = os.path.join(SESSIONS_DIR, f'{phone}.session')
@@ -169,4 +171,7 @@ async def main():
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("bye :)")
