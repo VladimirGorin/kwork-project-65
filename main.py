@@ -5,11 +5,7 @@ import logging
 import asyncio
 from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError
-
-SESSIONS_DIR = './sessions/'
-LOG_FILE = './log/main.log'
-MESSAGES_FILE = './data/messages.txt'
-SYNONYMS_FILE = './data/synonyms.txt'
+from config import SESSIONS_DIR, LOG_FILE, MESSAGES_FILE, SYNONYMS_FILE, ENVELOPE_TIME_BEFORE_SEND_MESSAGE, MAX_ENVELOPE_MESSAGES_ALL_SESSIONS
 
 
 logging.basicConfig(
@@ -53,6 +49,7 @@ def generate_text_keyboard(keyboard):
 
 async def like_people(phone, client):
     buttons_not_found = 0
+    count_sended_envelope = 0
 
     generated_message = load_messages(MESSAGES_FILE)
     generated_synonym = load_messages(SYNONYMS_FILE)
@@ -93,12 +90,19 @@ async def like_people(phone, client):
                 for button in row.buttons:
 
                     if "💌" in button.text:
+                        if count_sended_envelope >= MAX_ENVELOPE_MESSAGES_ALL_SESSIONS:
+                            logger.info(f"Не удалось нажать на 💌 превышен лимит: {count_sended_envelope}")
+                            continue
+
                         await client.send_message(bot, button.text)
                         found = True
                         logger.info("Нажата кнопка 💌")
                         random_message = generate_random_message(generated_message, generated_synonym)
+                        logger.info(f"Спим прежде чем отправить сообщение: {ENVELOPE_TIME_BEFORE_SEND_MESSAGE}")
+                        time.sleep(ENVELOPE_TIME_BEFORE_SEND_MESSAGE)
                         await client.send_message(bot, random_message)
                         logger.info(f"Отправлено сообщение: {random_message}")
+                        count_sended_envelope += 1
                         break
 
                 if not found:
