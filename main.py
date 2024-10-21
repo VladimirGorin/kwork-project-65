@@ -1,12 +1,8 @@
-import json
-import os
-import random
-import logging
-import asyncio
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, connection
 from telethon.errors import SessionPasswordNeededError
-from config import SESSIONS_DIR, LOG_FILE, MESSAGES_FILE, SYNONYMS_FILE, ENVELOPE_TIME_BEFORE_SEND_MESSAGE, MAX_ENVELOPE_MESSAGES_ALL_SESSIONS
+from config import SESSIONS_DIR, LOG_FILE, MESSAGES_FILE, SYNONYMS_FILE, ENVELOPE_TIME_BEFORE_SEND_MESSAGE, MAX_ENVELOPE_MESSAGES_ALL_SESSIONS, ENVELOPE_EMOJI
 
+import json, os, random, logging, asyncio, time
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -89,16 +85,16 @@ async def like_people(phone, client):
             for row in buttons:
                 for button in row.buttons:
 
-                    if "💌" in button.text:
+                    if any(char in item for item in button.text for char in ENVELOPE_EMOJI if char.strip()):
                         if count_sended_envelope >= MAX_ENVELOPE_MESSAGES_ALL_SESSIONS:
-                            logger.info(f"Не удалось нажать на 💌 превышен лимит: {count_sended_envelope}")
+                            logger.info(f"Не удалось нажать на {button.text} превышен лимит: {count_sended_envelope}")
                             continue
 
                         await client.send_message(bot, button.text)
                         found = True
-                        logger.info("Нажата кнопка 💌")
+                        logger.info(f"Нажата кнопка {button.text}")
                         random_message = generate_random_message(generated_message, generated_synonym)
-                        logger.info(f"Спим прежде чем отправить сообщение: {ENVELOPE_TIME_BEFORE_SEND_MESSAGE}")
+                        logger.info(f"Спим прежде чем отправить сообщение: {ENVELOPE_TIME_BEFORE_SEND_MESSAGE} секунд")
                         time.sleep(ENVELOPE_TIME_BEFORE_SEND_MESSAGE)
                         await client.send_message(bot, random_message)
                         logger.info(f"Отправлено сообщение: {random_message}")
@@ -131,13 +127,25 @@ async def process_session(phone):
     if not config:
         return
 
-    print(config)
 
     api_id = config.get('app_id')
     api_hash = config.get('app_hash')
+    proxy = config.get('proxy')
+    proxy_type = config.get('proxy_type')
     session_file = os.path.join(SESSIONS_DIR, f'{phone}.session')
 
-    client = TelegramClient(session_file, api_id, api_hash)
+    if (proxy):
+        proxy = tuple(proxy)
+
+    if (proxy_type == "MTPROTO"):
+        client = TelegramClient(os.path.join(
+            SESSIONS_DIR, phone), api_id, api_id, proxy=proxy, connection=connection.ConnectionTcpMTProxyRandomizedIntermediate)
+    elif (not proxy_type):
+        client = TelegramClient(os.path.join(
+            SESSIONS_DIR, phone), api_id, api_id)
+    else:
+        client = TelegramClient(os.path.join(
+            SESSIONS_DIR, phone), api_id, api_id, proxy=proxy)
 
     try:
         await client.start(phone=phone)
