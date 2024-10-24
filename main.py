@@ -1,6 +1,6 @@
 from telethon import TelegramClient, events, connection
 from telethon.errors import SessionPasswordNeededError
-from config import SESSIONS_DIR, LOG_FILE, MESSAGES_FILE, SYNONYMS_FILE, ENVELOPE_TIME_BEFORE_SEND_MESSAGE, MAX_ENVELOPE_MESSAGES_ALL_SESSIONS, ENVELOPE_EMOJI
+from config import SESSIONS_DIR, LOG_FILE, MESSAGES_FILE, SYNONYMS_FILE, ENVELOPE_TIME_BEFORE_SEND_MESSAGE, MAX_ENVELOPE_MESSAGES_ALL_SESSIONS, ENVELOPE_EMOJI, SWITCH_TO_DISLIKE
 
 import json, os, random, logging, asyncio, time
 
@@ -46,6 +46,7 @@ def generate_text_keyboard(keyboard):
 async def like_people(phone, client):
     buttons_not_found = 0
     count_sended_envelope = 0
+    count_dislike = 0
 
     generated_message = load_messages(MESSAGES_FILE)
     generated_synonym = load_messages(SYNONYMS_FILE)
@@ -86,8 +87,16 @@ async def like_people(phone, client):
                 for button in row.buttons:
 
                     if any(char in item for item in button.text for char in ENVELOPE_EMOJI if char.strip()):
+
+
                         if count_sended_envelope >= MAX_ENVELOPE_MESSAGES_ALL_SESSIONS:
                             logger.info(f"Не удалось нажать на {button.text} превышен лимит: {count_sended_envelope}")
+                            continue
+
+                        if count_sended_envelope >= SWITCH_TO_DISLIKE:
+                            logger.info(f"Нажимаем на дизлайк {button.text}")
+                            await client.send_message(bot, "👎")
+                            count_dislike = 0
                             continue
 
                         await client.send_message(bot, button.text)
@@ -98,7 +107,9 @@ async def like_people(phone, client):
                         time.sleep(ENVELOPE_TIME_BEFORE_SEND_MESSAGE)
                         await client.send_message(bot, random_message)
                         logger.info(f"Отправлено сообщение: {random_message}")
+
                         count_sended_envelope += 1
+                        count_dislike += 1
                         break
 
                 if not found:

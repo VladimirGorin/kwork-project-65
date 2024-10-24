@@ -8,3 +8,4 @@ ENVELOPE_EMOJI = ["✉️", "📩", "📨", "💌", "💌", "✉", "✉️", "�
 
 ENVELOPE_TIME_BEFORE_SEND_MESSAGE = 3  # Секунды
 MAX_ENVELOPE_MESSAGES_ALL_SESSIONS = 10  # Штук
+SWITCH_TO_DISLIKE = 4  # Штук
